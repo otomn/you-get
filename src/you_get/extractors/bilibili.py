@@ -8,6 +8,12 @@ import threading
 
 threadLock = threading.Lock()
 
+def downloadCondition(i):
+    return False \
+        or True \
+        or i < 10 \
+        or i in [1, 2, 3]
+
 class Bilibili(VideoExtractor):
     name = "Bilibili"
 
@@ -595,6 +601,7 @@ class Bilibili(VideoExtractor):
             stream_id = self.streams_sorted[0]['id']
 
     def download_playlist_by_url(self, url, **kwargs):
+        signal.signal(signal.SIGINT, signal.default_int_handler)
         self.url = url
         kwargs['playlist'] = True
 
@@ -703,10 +710,21 @@ class Bilibili(VideoExtractor):
             initial_state = json.loads(initial_state_text)
             epn, i = len(initial_state['epList']), 0
             for ep in initial_state['epList']:
-                i += 1; log.w('Extracting %s of %s videos ...' % (i, epn))
+                i += 1
+                if not downloadCondition(i):
+                    continue
+                log.w('Extracting %s of %s videos ...' % (i, epn))
                 ep_id = ep['id']
                 epurl = 'https://www.bilibili.com/bangumi/play/ep%s/' % ep_id
-                self.__class__().download_by_url(epurl, **kwargs)
+                for t in range(10):
+                    try:
+                        self.__class__().download_by_url(epurl, **kwargs)
+                        break
+                    except KeyboardInterrupt:
+                        exit()
+                    except:
+                        print("failed %d times for %d" % (t + 1, i))
+                        continue
 
         elif sort == 'bangumi_md':
             initial_state_text = match1(html_content, r'__INITIAL_STATE__=(.*?);\(function\(\)')  # FIXME
