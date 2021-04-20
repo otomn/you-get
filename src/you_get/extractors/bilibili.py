@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import signal
 
 from ..common import *
 from ..extractor import VideoExtractor
@@ -8,11 +9,10 @@ import threading
 
 threadLock = threading.Lock()
 
-def downloadCondition(i):
-    return False \
-        or True \
-        or i < 10 \
-        or i in [1, 2, 3]
+def ctrlc(sig, frame):
+    os.kill(os.getpid(), signal.SIGTERM)
+
+signal.signal(signal.SIGINT, ctrlc)
 
 class Bilibili(VideoExtractor):
     name = "Bilibili"
@@ -601,7 +601,6 @@ class Bilibili(VideoExtractor):
             stream_id = self.streams_sorted[0]['id']
 
     def download_playlist_by_url(self, url, **kwargs):
-        signal.signal(signal.SIGINT, signal.default_int_handler)
         self.url = url
         kwargs['playlist'] = True
 
@@ -711,7 +710,7 @@ class Bilibili(VideoExtractor):
             epn, i = len(initial_state['epList']), 0
             for ep in initial_state['epList']:
                 i += 1
-                if not downloadCondition(i):
+                if i not in kwargs['args'].range:
                     continue
                 log.w('Extracting %s of %s videos ...' % (i, epn))
                 ep_id = ep['id']
