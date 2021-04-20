@@ -397,8 +397,7 @@ def get_location(url, headers=None, get_method='HEAD'):
 
 
 def urlopen_with_retry(*args, **kwargs):
-    retry_time = 3
-    for i in range(retry_time):
+    while True:
         try:
             if insecure:
                 # ignore ssl errors
@@ -410,13 +409,11 @@ def urlopen_with_retry(*args, **kwargs):
                 return request.urlopen(*args, **kwargs)
         except socket.timeout as e:
             logging.debug('request attempt %s timeout' % str(i + 1))
-            if i + 1 == retry_time:
-                raise e
         # try to tackle youku CDN fails
         except error.HTTPError as http_error:
             logging.debug('HTTP Error with code{}'.format(http_error.code))
-            if i + 1 == retry_time:
-                raise http_error
+        except Exception as e:
+            logging.debug(e)
 
 
 def get_content(url, headers={}, decoded=True):
